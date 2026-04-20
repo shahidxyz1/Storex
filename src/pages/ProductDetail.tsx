@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import { motion, AnimatePresence } from 'framer-motion';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, serverTimestamp, onSnapshot, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, serverTimestamp, onSnapshot, collection } from 'firebase/firestore';
 import { db, loginWithGoogle } from '../lib/firebase';
 import { useStore } from '../store/useStore';
 import { ArrowLeft, Download, Check, Heart, ShieldCheck, QrCode, Keyboard, Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
@@ -88,9 +88,23 @@ export default function ProductDetail() {
       const couponSnap = await getDoc(couponRef);
       if (couponSnap.exists()) {
         const data = couponSnap.data();
-        if (data.isActive) {
+        
+        let isExpired = false;
+        if (data.expiresAt) {
+          const expiryDate = new Date(data.expiresAt);
+          // Set to end of the day or just compare precisely. Let's compare as start of day for simplicity,
+          // or just direct Date comparison.
+          if (new Date() > expiryDate) {
+             isExpired = true;
+          }
+        }
+
+        if (data.isActive && !isExpired) {
           setAppliedDiscount(data.discountPercent);
           hapticFeedback('medium');
+        } else if (isExpired) {
+          setCouponError('This coupon has expired.');
+          setAppliedDiscount(0);
         } else {
           setCouponError('Coupon is no longer active.');
           setAppliedDiscount(0);
@@ -142,16 +156,21 @@ export default function ProductDetail() {
         }
 
         try {
-          const docRef = await addDoc(collection(db, 'purchases'), {
+          const purchasePayload: any = {
             utr: utrCode.trim(),
             status: 'pending',
             requiredAmount: finalPrice,
             userId: user.uid,
             productId: id,
-            couponUsed: appliedDiscount > 0 ? couponCode.trim().toUpperCase() : null,
             timestamp: serverTimestamp()
-          });
-          setPurchaseDocId(docRef.id);
+          };
+          if (appliedDiscount > 0) {
+            purchasePayload.couponUsed = couponCode.trim().toUpperCase();
+          }
+
+          const purchaseDocRef = doc(db, 'purchases', utrCode.trim());
+          await setDoc(purchaseDocRef, purchasePayload);
+          setPurchaseDocId(purchaseDocRef.id);
           setCheckoutStep('processing');
         } catch (e) {
           console.error('Failed to initialize local payment verification', e);
@@ -271,7 +290,7 @@ export default function ProductDetail() {
             ) : (
               <>
                 <Download size={22} />
-                {product.price > 0 ? `Buy for $${product.price}` : 'Get Product Free'}
+                {product.price > 0 ? `Buy for ₹${product.price}` : 'Get Product Free'}
               </>
             )}
           </button>
@@ -295,7 +314,7 @@ export default function ProductDetail() {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative bg-[#13131a] rounded-[24px] overflow-hidden w-full max-w-[420px] shadow-[0_0_80px_rgba(99,102,241,0.08),0_40px_80px_rgba(0,0,0,0.5)] border border-white/10"
+            className="relative bg-[#13131a] rounded-[24px] overflow-y-auto w-full max-w-[420px] max-h-[85svh] shadow-[0_0_80px_rgba(99,102,241,0.08),0_40px_80px_rgba(0,0,0,0.5)] border border-white/10"
           >
             <div className="absolute top-0 left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-[#6366f1] to-transparent opacity-60" />
 
@@ -314,13 +333,13 @@ export default function ProductDetail() {
                 <div className="bg-white/[0.03] rounded-[16px] p-5 mb-5 border border-white/5 space-y-3">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-[#8E8E93]">Subtotal</span>
-                    <span className="font-semibold">${product.price.toFixed(2)}</span>
+                    <span className="font-semibold">₹{product.price.toFixed(2)}</span>
                   </div>
                   
                   {appliedDiscount > 0 && (
                     <div className="flex justify-between items-center text-sm text-[#10b981]">
                       <span>Discount ({appliedDiscount}%)</span>
-                      <span>-${(product.price * (appliedDiscount / 100)).toFixed(2)}</span>
+                      <span>-₹{(product.price * (appliedDiscount / 100)).toFixed(2)}</span>
                     </div>
                   )}
                   
@@ -329,7 +348,7 @@ export default function ProductDetail() {
                   <div className="flex justify-between items-center text-lg font-bold">
                     <span>Total</span>
                     <span className="flex items-baseline gap-1 text-[#6366f1]">
-                      <span className="text-sm text-[#6366f1]/70">$</span>
+                      <span className="text-sm text-[#6366f1]/70">₹</span>
                       {getFinalPrice().toFixed(2)}
                     </span>
                   </div>
@@ -379,7 +398,7 @@ export default function ProductDetail() {
                 <div className="p-6 border-b border-white/5">
                   <div className="text-[11px] text-white/35 uppercase tracking-widest mb-2">Amount to pay</div>
                   <div className="flex items-baseline gap-2 text-white font-mono text-[42px] font-bold tracking-tight leading-none">
-                    <span className="text-[#6366f1] text-[24px]">$</span>{getFinalPrice().toFixed(2)}
+                    <span className="text-[#6366f1] text-[24px]">₹</span>{getFinalPrice().toFixed(2)}
                   </div>
                   <div className="text-[12px] text-white/30 mt-2">Product: {product.title}</div>
                 </div>
@@ -460,7 +479,7 @@ export default function ProductDetail() {
                   <Check size={32} />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">Payment Verified!</h3>
-                <p className="text-[14px] text-white/50 mb-8">${getFinalPrice().toFixed(2)} successfully received.<br/>Your product is ready.</p>
+                <p className="text-[14px] text-white/50 mb-8">₹{getFinalPrice().toFixed(2)} successfully received.<br/>Your product is ready.</p>
                 
                 <button 
                   onClick={() => setShowCheckout(false)}

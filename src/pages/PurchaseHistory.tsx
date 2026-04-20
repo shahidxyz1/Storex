@@ -132,7 +132,7 @@ export default function PurchaseHistory() {
                 </div>
                 <div className="text-right shrink-0">
                   <div className={`font-bold text-[18px] ${item.amountPaid === 0 || !item.amountPaid ? 'text-[#32D74B]' : 'text-white'}`}>
-                    {item.amountPaid === 0 || item.amountPaid === undefined ? 'FREE' : `$${item.amountPaid.toFixed(2)}`}
+                    {item.amountPaid === 0 || item.amountPaid === undefined ? 'FREE' : `₹${item.amountPaid.toFixed(2)}`}
                   </div>
                 </div>
               </div>

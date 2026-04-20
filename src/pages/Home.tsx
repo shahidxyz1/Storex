@@ -101,7 +101,7 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-white/80 text-[10px] font-bold uppercase tracking-wider">{product.category}</p>
                   <div className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white uppercase tracking-wider">
-                    {product.price > 0 ? `$${product.price.toFixed(2)}` : 'FREE'}
+                    {product.price > 0 ? `₹${product.price.toFixed(2)}` : 'FREE'}
                   </div>
                 </div>
                 <h4 className="text-white text-2xl font-bold leading-tight drop-shadow-md">{product.title}</h4>
@@ -184,7 +184,7 @@ export default function Home() {
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-[13px] text-[#8E8E93] truncate">{product.category}</p>
                   <div className="w-[3px] h-[3px] rounded-full bg-[#8E8E93]/50"></div>
-                  <p className="text-[12px] font-bold text-[#0A84FF]">{product.price > 0 ? `$${product.price.toFixed(2)}` : 'FREE'}</p>
+                  <p className="text-[12px] font-bold text-[#0A84FF]">{product.price > 0 ? `₹${product.price.toFixed(2)}` : 'FREE'}</p>
                 </div>
               </div>
               <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 text-[#0A84FF]">

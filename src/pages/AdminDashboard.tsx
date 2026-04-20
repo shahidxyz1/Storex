@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useStore } from '../store/useStore';
-import { Plus, Edit2, Trash2, Tag, Box } from 'lucide-react';
+import { Plus, Edit2, Trash2, Tag, Box, Image as ImageIcon, UploadCloud } from 'lucide-react';
 import { hapticFeedback } from '../lib/haptics';
 
 export default function AdminDashboard() {
   const { user } = useStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'products'|'coupons'>('products');
   const [products, setProducts] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -19,7 +20,7 @@ export default function AdminDashboard() {
 
   const [showCouponForm, setShowCouponForm] = useState(false);
   const [couponForm, setCouponForm] = useState({
-    code: '', discountPercent: 10, isActive: true
+    code: '', discountPercent: 10, isActive: true, expiresAt: ''
   });
 
   const fetchProducts = async () => {
@@ -36,6 +37,57 @@ export default function AdminDashboard() {
     fetchProducts();
     fetchCoupons();
   }, []);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        alert("Please select a valid image file.");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 800;
+            const MAX_HEIGHT = 800;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
+                }
+            } else {
+                if (height > MAX_HEIGHT) {
+                    width *= MAX_HEIGHT / height;
+                    height = MAX_HEIGHT;
+                }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Check approximate base64 size limits (800kb)
+            if (dataUrl.length > 800000) {
+               alert("Image is too large, even after compression. Please upload a smaller image under 500kb.");
+               return;
+            }
+
+            setProductForm({ ...productForm, imageUrl: dataUrl });
+            hapticFeedback('light');
+        };
+        img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,28 +140,23 @@ export default function AdminDashboard() {
       if (!code) return;
 
       const existing = coupons.find(c => c.id === code);
+      const couponPayload: any = {
+        code: code,
+        discountPercent: Number(couponForm.discountPercent) || 0,
+        isActive: Boolean(couponForm.isActive),
+        createdBy: existing ? existing.createdBy : user.uid,
+        createdAt: existing ? existing.createdAt : serverTimestamp()
+      };
 
-      if (existing) {
-        await setDoc(doc(db, 'coupons', code), { 
-          code: code,
-          discountPercent: Number(couponForm.discountPercent) || 0,
-          isActive: Boolean(couponForm.isActive),
-          createdAt: existing.createdAt,
-          createdBy: existing.createdBy
-        });
-      } else {
-        await setDoc(doc(db, 'coupons', code), {
-          code: code,
-          discountPercent: Number(couponForm.discountPercent) || 0,
-          isActive: Boolean(couponForm.isActive),
-          createdAt: serverTimestamp(),
-          createdBy: user.uid
-        });
+      if (couponForm.expiresAt) {
+          couponPayload.expiresAt = couponForm.expiresAt;
       }
+
+      await setDoc(doc(db, 'coupons', code), couponPayload);
 
       hapticFeedback('medium');
       setShowCouponForm(false);
-      setCouponForm({ code: '', discountPercent: 10, isActive: true });
+      setCouponForm({ code: '', discountPercent: 10, isActive: true, expiresAt: '' });
       fetchCoupons();
     } catch (err) {
       console.error(err);
@@ -175,7 +222,7 @@ export default function AdminDashboard() {
                   <div key={p.id} className="glass p-[12px] rounded-[18px] flex items-center justify-between gap-[12px]">
                     <div className="flex-1 pl-2 min-w-0">
                       <h4 className="font-semibold text-[14px] truncate">{p.title}</h4>
-                      <p className="text-[12px] text-[#8E8E93] truncate">{p.category} • ${p.price ?? 0}</p>
+                      <p className="text-[12px] text-[#8E8E93] truncate">{p.category} • ₹{p.price ?? 0}</p>
                     </div>
                     <div className="flex gap-2 text-[#8E8E93] shrink-0">
                       <button onClick={() => {
@@ -208,13 +255,41 @@ export default function AdminDashboard() {
                   <input required type="text" placeholder="Select Category" value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})} className="input-dark w-full text-[14px] p-[16px] rounded-[14px] outline-none focus:ring-1 focus:ring-[#0A84FF] border border-white/5 bg-black/40" />
                 </div>
                 <div className="flex flex-col gap-[8px]">
-                  <label className="text-[12px] font-bold text-[#8E8E93] tracking-wide uppercase">Price ($)</label>
+                  <label className="text-[12px] font-bold text-[#8E8E93] tracking-wide uppercase">Price (₹)</label>
                   <input required type="number" min="0" step="1" placeholder="0.00" value={productForm.price === 0 ? '' : productForm.price} onChange={e => setProductForm({...productForm, price: parseFloat(e.target.value) || 0})} className="input-dark w-full text-[14px] p-[16px] rounded-[14px] outline-none focus:ring-1 focus:ring-[#0A84FF] border border-white/5 bg-black/40" />
                 </div>
               </div>
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[12px] font-bold text-[#8E8E93] tracking-wide uppercase">Image URL</label>
-                <input type="text" placeholder="https://..." value={productForm.imageUrl} onChange={e => setProductForm({...productForm, imageUrl: e.target.value})} className="input-dark w-full text-[14px] p-[16px] rounded-[14px] outline-none focus:ring-1 focus:ring-[#0A84FF] border border-white/5 bg-black/40" />
+                <label className="text-[12px] font-bold text-[#8E8E93] tracking-wide uppercase">Cover Image</label>
+                
+                <div className="flex items-center gap-3">
+                   {productForm.imageUrl && (
+                      <div className="h-16 w-16 bg-[#222] rounded-[10px] shrink-0 border border-white/10 overflow-hidden">
+                         <img src={productForm.imageUrl} alt="preview" className="w-full h-full object-cover" />
+                      </div>
+                   )}
+                   <div className="flex-1 flex flex-col gap-2">
+                       <input 
+                          type="file" 
+                          accept="image/*"
+                          ref={fileInputRef}
+                          onChange={handleImageUpload}
+                          className="hidden" 
+                       />
+                       <div className="flex items-center gap-2">
+                          <button 
+                             type="button"
+                             onClick={() => fileInputRef.current?.click()}
+                             className="bg-white/10 hover:bg-white/20 active:bg-white/30 text-white px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors flex items-center gap-2"
+                          >
+                             <UploadCloud size={16} /> {productForm.imageUrl ? 'Change Image' : 'Upload Image'}
+                          </button>
+                          <span className="text-[11px] text-[#8E8E93] italic">OR paste URL below</span>
+                       </div>
+                       
+                       <input type="text" placeholder="https://..." value={productForm.imageUrl} onChange={e => setProductForm({...productForm, imageUrl: e.target.value})} className="input-dark w-full text-[13px] p-[10px] rounded-[10px] outline-none focus:ring-1 focus:ring-[#0A84FF] border border-white/5 bg-black/40" />
+                   </div>
+                </div>
               </div>
               <div className="flex flex-col gap-[8px]">
                 <label className="text-[12px] font-bold text-[#8E8E93] tracking-wide uppercase">File Upload URL</label>
@@ -244,7 +319,10 @@ export default function AdminDashboard() {
                   <div key={c.id} className="glass p-[12px] rounded-[18px] flex items-center justify-between gap-[12px]">
                     <div className="flex-1 pl-2 min-w-0">
                       <h4 className="font-semibold text-[14px] truncate text-[#0A84FF]">{c.code}</h4>
-                      <p className="text-[12px] text-[#8E8E93] truncate">{c.discountPercent}% OFF • {c.isActive ? 'Active' : 'Disabled'}</p>
+                      <p className="text-[12px] text-[#8E8E93] truncate">
+                         {c.discountPercent}% OFF • {c.isActive ? 'Active' : 'Disabled'}
+                         {c.expiresAt && ` • Exp: ${c.expiresAt}`}
+                      </p>
                     </div>
                     <div className="flex gap-2 text-[#8E8E93] shrink-0">
                       <button onClick={() => {
@@ -271,13 +349,17 @@ export default function AdminDashboard() {
                 <label className="text-[12px] font-bold text-[#8E8E93] tracking-wide uppercase">Discount Percentage (%)</label>
                 <input required type="number" min="1" max="100" placeholder="25" value={couponForm.discountPercent || ''} onChange={e => setCouponForm({...couponForm, discountPercent: parseInt(e.target.value)})} className="input-dark w-full text-[14px] p-[16px] rounded-[14px] outline-none focus:ring-1 focus:ring-[#5E5CE6] bg-black/40 border border-white/5" />
               </div>
+              <div className="flex flex-col gap-[8px]">
+                <label className="text-[12px] font-bold text-[#8E8E93] tracking-wide uppercase">Expiration Date (Optional)</label>
+                <input type="date" value={couponForm.expiresAt || ''} onChange={e => setCouponForm({...couponForm, expiresAt: e.target.value})} className="input-dark w-full text-[14px] p-[16px] rounded-[14px] outline-none focus:ring-1 focus:ring-[#5E5CE6] bg-black/40 border border-white/5 [&::-webkit-calendar-picker-indicator]:invert" />
+              </div>
               <div className="flex items-center gap-[12px] mt-2 p-4 rounded-[14px] bg-white/5 border border-white/5">
                 <input type="checkbox" id="isActive" checked={couponForm.isActive} onChange={e => setCouponForm({...couponForm, isActive: e.target.checked})} className="w-5 h-5 accent-[#5E5CE6] rounded cursor-pointer" />
                 <label htmlFor="isActive" className="text-[14px] font-semibold text-white/90 cursor-pointer select-none">Coupon is active and usable</label>
               </div>
               
               <div className="flex gap-3 pt-6 mt-[10px] border-t border-white/10">
-                <button type="button" onClick={() => { setShowCouponForm(false); setCouponForm({ code: '', discountPercent: 10, isActive: true }); }} className="flex-1 py-[16px] rounded-[14px] font-bold bg-white/5 hover:bg-white/10 text-white transition-all">Cancel</button>
+                <button type="button" onClick={() => { setShowCouponForm(false); setCouponForm({ code: '', discountPercent: 10, isActive: true, expiresAt: '' }); }} className="flex-1 py-[16px] rounded-[14px] font-bold bg-white/5 hover:bg-white/10 text-white transition-all">Cancel</button>
                 <button type="submit" className="flex-1 py-[16px] rounded-[14px] font-bold bg-[#5E5CE6] hover:bg-[#5E5CE6]/90 text-white shadow-lg shadow-[#5E5CE6]/20 transition-all">Save Coupon</button>
               </div>
             </form>
