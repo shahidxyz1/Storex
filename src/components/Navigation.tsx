@@ -32,16 +32,14 @@ export default function Navigation() {
           <span className="text-[10px] font-medium tracking-wide">Library</span>
         </NavLink>
 
-        {userData?.role === 'admin' && (
-          <NavLink 
-            to="/admin" 
-            onClick={handlePress}
-            className={({isActive}) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-[#0A84FF] opacity-100 scale-105' : 'text-[#8E8E93] opacity-50'}`}
-          >
-            <Settings className="w-6 h-6" />
-            <span className="text-[10px] font-medium tracking-wide">Admin</span>
-          </NavLink>
-        )}
+        <NavLink 
+          to="/admin" 
+          onClick={handlePress}
+          className={({isActive}) => `flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'text-[#0A84FF] opacity-100 scale-105' : 'text-[#8E8E93] opacity-50'}`}
+        >
+          <Settings className="w-6 h-6" />
+          <span className="text-[10px] font-medium tracking-wide">Admin</span>
+        </NavLink>
         </div>
       </div>
     </div>

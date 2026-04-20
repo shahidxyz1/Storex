@@ -149,6 +149,16 @@ export default function Sidebar() {
                               <ChevronRight size={16} className="text-[#8E8E93]/50" />
                             </div>
                           </button>
+                          <button 
+                            onClick={() => { hapticFeedback('light'); navigate('/admin'); handleClose(); }}
+                            className="w-full flex items-center justify-between p-4 hover:bg-white/5 active:bg-white/10 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <ShieldCheck size={18} className="text-[#0A84FF]" />
+                              <span className="text-[15px] font-medium text-white/90">Admin Portal</span>
+                            </div>
+                            <ChevronRight size={16} className="text-[#8E8E93]/50" />
+                          </button>
                           {[
                             { icon: Settings, label: 'Preferences', id: 'preferences', color: 'text-[#8E8E93]' },
                             { icon: HelpCircle, label: 'Help & Support', id: 'support', color: 'text-[#8E8E93]' }
