@@ -1,5 +1,13 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -18,6 +26,7 @@ export const loginWithGoogle = async () => {
       console.error("Login failed", error);
       alert(`Login failed: ${error.message}. If you are hosting on Netlify, ensure your Netlify domain is added to Authorized Domains in Firebase Console -> Authentication -> Settings.`);
     }
+    throw error;
   }
 };
 
