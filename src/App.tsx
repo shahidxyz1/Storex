@@ -15,6 +15,7 @@ const Home = React.lazy(() => import('./pages/Home'));
 const ProductDetail = React.lazy(() => import('./pages/ProductDetail'));
 const Library = React.lazy(() => import('./pages/Library'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const AdminLogin = React.lazy(() => import('./pages/AdminLogin'));
 const Wishlist = React.lazy(() => import('./pages/Wishlist'));
 const PurchaseHistory = React.lazy(() => import('./pages/PurchaseHistory'));
 
@@ -68,22 +69,25 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="pb-24 pt-6 md:pt-14 w-full md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto min-h-screen relative text-[#FFFFFF] md:border-x border-[#ffffff0a] bg-transparent">
-        <Sidebar />
-        <Suspense fallback={<Loader />}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/library" element={user ? <Library /> : <Navigate to="/" />} />
-            <Route path="/wishlist" element={user ? <Wishlist /> : <Navigate to="/" />} />
-            <Route path="/history" element={user ? <PurchaseHistory /> : <Navigate to="/" />} />
-            <Route 
-              path="/admin" 
-              element={userData?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/" />} 
-            />
-          </Routes>
-        </Suspense>
-        <Navigation />
+      <div className="h-[100dvh] w-full overflow-y-auto overflow-x-hidden relative bg-transparent text-[#FFFFFF]">
+        <div className="pb-24 pt-6 md:pt-14 w-full md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto min-h-full relative md:border-x border-[#ffffff0a]">
+          <Sidebar />
+          <Suspense fallback={<Loader />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
+              <Route path="/library" element={user ? <Library /> : <Navigate to="/" />} />
+              <Route path="/wishlist" element={user ? <Wishlist /> : <Navigate to="/" />} />
+              <Route path="/history" element={user ? <PurchaseHistory /> : <Navigate to="/" />} />
+              <Route path="/admin-login" element={<AdminLogin />} />
+              <Route 
+                path="/admin" 
+                element={userData?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/admin-login" />} 
+              />
+            </Routes>
+          </Suspense>
+          <Navigation />
+        </div>
       </div>
     </BrowserRouter>
   );

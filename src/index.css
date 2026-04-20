@@ -80,6 +80,12 @@ html.light .from-white { --tw-gradient-from: #000000 !important; }
 html.light .via-white { --tw-gradient-via: #333333 !important; }
 html.light .to-white\/50 { --tw-gradient-to: rgba(0,0,0,0.5) !important; }
 
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--color-bg);
@@ -89,8 +95,6 @@ body {
     radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
   background-attachment: fixed;
   color: #ffffff;
-  min-height: 100vh;
-  width: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
