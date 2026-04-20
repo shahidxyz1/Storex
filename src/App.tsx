@@ -9,6 +9,7 @@ import { useStore } from './store/useStore';
 import Navigation from './components/Navigation';
 import Sidebar from './components/Sidebar';
 import Loader from './components/Loader';
+import AuthModal from './components/AuthModal';
 
 // Lazy Pages
 const Home = React.lazy(() => import('./pages/Home'));
@@ -72,6 +73,7 @@ export default function App() {
       <div className="h-[100dvh] w-full overflow-y-auto overflow-x-hidden relative bg-transparent text-[#FFFFFF]">
         <div className="pb-24 pt-6 md:pt-14 w-full md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto min-h-full relative md:border-x border-[#ffffff0a]">
           <Sidebar />
+          <AuthModal />
           <Suspense fallback={<Loader />}>
             <Routes>
               <Route path="/" element={<Home />} />
