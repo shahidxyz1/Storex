@@ -53,6 +53,8 @@ export default function ProductDetail() {
   const [utrCode, setUtrCode] = useState('');
   const [purchaseDocId, setPurchaseDocId] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(180);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMessage, setAuthModalMessage] = useState('');
 
   useEffect(() => {
     if (checkoutStep === 'processing' && timeRemaining > 0) {
@@ -127,7 +129,8 @@ export default function ProductDetail() {
   const handleGetProduct = async () => {
     hapticFeedback('medium');
     if (!user) {
-      alert("Please sign in to get this product.");
+      setAuthModalMessage('Sign in to purchase this product.');
+      setShowAuthModal(true);
       return;
     }
     if (!id || !product) return;
@@ -205,7 +208,11 @@ export default function ProductDetail() {
 
   const toggleWishlist = async () => {
     hapticFeedback('light');
-    if (!user) return alert("Sign in first");
+    if (!user) {
+      setAuthModalMessage('Sign in to add this to your wishlist.');
+      setShowAuthModal(true);
+      return;
+    }
     
     const userRef = doc(db, 'users', user.uid);
     try {
@@ -273,7 +280,7 @@ export default function ProductDetail() {
           {product.description}
         </p>
 
-        <div className="fixed bottom-8 left-6 right-6 md:relative md:bottom-auto md:left-auto md:right-auto md:w-full z-50 mt-auto md:pt-10">
+        <div className="fixed bottom-[100px] left-6 right-6 md:relative md:bottom-auto md:left-auto md:right-auto md:w-full z-50 mt-auto md:pt-10">
           <button
             onClick={isOwned ? undefined : handleGetProduct}
             className={`w-full py-[18px] md:py-5 rounded-[18px] md:rounded-[24px] font-bold text-[16px] md:text-[18px] flex items-center justify-center gap-2 transition-all shadow-2xl backdrop-blur-lg border border-white/20 ${
@@ -508,6 +515,63 @@ export default function ProductDetail() {
                 </button>
               </div>
             )}
+          </motion.div>
+        </div>
+      )}
+
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-md" 
+            onClick={() => setShowAuthModal(false)}
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative bg-[#1c1c1e] rounded-[32px] p-8 md:p-10 max-w-[400px] w-full shadow-2xl border border-white/10 text-center overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-[#0A84FF] to-[#5E5CE6]" />
+            <div className="w-20 h-20 bg-gradient-to-br from-[#0A84FF]/20 to-[#5E5CE6]/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <ShieldCheck size={36} className="text-[#0A84FF]" />
+            </div>
+            <h3 className="text-[24px] font-extrabold mb-3 tracking-tight">Authentication Required</h3>
+            <p className="text-[#8E8E93] text-[15px] mb-8 leading-relaxed max-w-[280px] mx-auto">
+              {authModalMessage}
+            </p>
+            
+            <button 
+              onClick={async () => {
+                hapticFeedback('medium');
+                try {
+                  await loginWithGoogle();
+                  setShowAuthModal(false);
+                } catch(e) {
+                  console.error(e);
+                }
+              }}
+              className="w-full bg-white hover:bg-gray-200 text-black py-[16px] rounded-[16px] font-bold text-[16px] transition-all active:scale-95 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(255,255,255,0.2)] mb-4"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
+                  <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/>
+                  <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/>
+                  <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/>
+                  <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
+                </g>
+              </svg>
+              Continue with Google
+            </button>
+
+            <button 
+              onClick={() => setShowAuthModal(false)}
+              className="w-full text-[#8E8E93] hover:text-white py-3 font-semibold text-[14px] transition-colors"
+            >
+              Cancel
+            </button>
           </motion.div>
         </div>
       )}
