@@ -13,7 +13,7 @@ import { hapticFeedback } from '../lib/haptics';
 type ViewState = 'main' | 'preferences' | 'support';
 
 export default function Sidebar() {
-  const { isSidebarOpen, setSidebarOpen, user, userData, theme, setTheme } = useStore();
+  const { isSidebarOpen, setSidebarOpen, user, userData, theme, setTheme, openAuthModal } = useStore();
   const [currentView, setCurrentView] = useState<ViewState>('main');
   const navigate = useNavigate();
 
@@ -197,10 +197,10 @@ export default function Sidebar() {
                           <p className="text-[14px] text-[#8E8E93] leading-relaxed">Access your library, wishlist, and preferences across all devices.</p>
                         </div>
                         <button 
-                          onClick={() => { hapticFeedback('heavy'); loginWithGoogle(); }}
+                          onClick={() => { hapticFeedback('heavy'); openAuthModal('Access your library, wishlist, and preferences across all devices.'); }}
                           className="w-full py-4 rounded-[16px] font-bold bg-[#0A84FF] hover:bg-[#0A84FF]/90 text-white shadow-lg shadow-[#0A84FF]/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                         >
-                          <LogIn size={18} /> Continue with Google
+                          <LogIn size={18} /> Sign In
                         </button>
                       </div>
                     )}
