@@ -1,0 +1,143 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} { allow read, write: if false; }
+
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; 
+    }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) && 
+             (data.keys().size() == 4 || (data.keys().size() == 5 && data.keys().hasAny(['wishlist']))) &&
+        data.uid is string && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() <= 256 &&
+        data.role is string && (data.role == 'user' || data.role == 'admin') &&
+        data.createdAt == request.time &&
+        (!('wishlist' in data) || (data.wishlist is list && data.wishlist.size() <= 100)); // Cap wishlist
+    }
+    
+    function isValidUserUpdate(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) && 
+             (data.keys().size() == 4 || (data.keys().size() == 5 && data.keys().hasAny(['wishlist']))) &&
+        data.uid is string && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() <= 256 &&
+        data.role is string && (data.role == 'user' || data.role == 'admin') &&
+        data.createdAt == existing().createdAt &&
+        (!('wishlist' in data) || (data.wishlist is list && data.wishlist.size() <= 100)); // Cap wishlist
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['title', 'description', 'category', 'imageUrl', 'downloadUrl', 'price', 'createdAt', 'createdBy']) && data.keys().size() == 8 &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+        data.description is string && data.description.size() <= 5000 &&
+        data.category is string && data.category.size() <= 50 &&
+        data.imageUrl is string && data.imageUrl.size() <= 500 &&
+        data.downloadUrl is string && data.downloadUrl.size() <= 500 &&
+        data.price is number && data.price >= 0 &&
+        data.createdAt == request.time &&
+        data.createdBy is string && data.createdBy.size() <= 128;
+    }
+
+    function isValidProductUpdate(data) {
+      return data.keys().hasAll(['title', 'description', 'category', 'imageUrl', 'downloadUrl', 'price', 'createdAt', 'createdBy']) && data.keys().size() == 8 &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+        data.description is string && data.description.size() <= 5000 &&
+        data.category is string && data.category.size() <= 50 &&
+        data.imageUrl is string && data.imageUrl.size() <= 500 &&
+        data.downloadUrl is string && data.downloadUrl.size() <= 500 &&
+        data.price is number && data.price >= 0 &&
+        data.createdAt == existing().createdAt &&
+        data.createdBy == existing().createdBy;
+    }
+
+    function isValidDownload(data) {
+      return data.keys().hasAll(['productId', 'obtainedAt', 'amountPaid']) && 
+             (data.keys().size() == 3 || (data.keys().size() == 4 && data.keys().hasAny(['couponUsed']))) &&
+        data.productId is string && data.productId.size() <= 128 &&
+        data.amountPaid is number && data.amountPaid >= 0 &&
+        data.obtainedAt == request.time &&
+        (!('couponUsed' in data) || (data.couponUsed is string && data.couponUsed.size() <= 50));
+    }
+
+    function isValidCoupon(data) {
+      return data.keys().hasAll(['code', 'discountPercent', 'isActive', 'createdAt', 'createdBy']) && data.keys().size() == 5 &&
+        data.code is string && data.code.size() > 0 && data.code.size() <= 50 &&
+        data.discountPercent is number && data.discountPercent >= 0 && data.discountPercent <= 100 &&
+        data.isActive is bool &&
+        data.createdAt == request.time &&
+        data.createdBy is string && data.createdBy.size() <= 128;
+    }
+
+    function isValidCouponUpdate(data) {
+      return data.keys().hasAll(['code', 'discountPercent', 'isActive', 'createdAt', 'createdBy']) && data.keys().size() == 5 &&
+        data.code is string && data.code.size() > 0 && data.code.size() <= 50 &&
+        data.discountPercent is number && data.discountPercent >= 0 && data.discountPercent <= 100 &&
+        data.isActive is bool &&
+        data.createdAt == existing().createdAt &&
+        data.createdBy == existing().createdBy;
+    }
+
+    function isValidPurchase(data) {
+      return data.keys().hasAll(['utr', 'status', 'requiredAmount', 'userId', 'productId', 'timestamp']) && 
+             (data.keys().size() == 6 || (data.keys().size() == 7 && data.keys().hasAny(['couponUsed'])) || (data.keys().size() == 8 && data.keys().hasAll(['couponUsed', 'paidAmount'])) || (data.keys().size() == 7 && data.keys().hasAny(['paidAmount']))) &&
+        data.utr is string && data.utr.size() > 0 && data.utr.size() <= 100 &&
+        data.status is string && (data.status == 'pending' || data.status == 'approved' || data.status == 'amount_mismatch' || data.status == 'failed') &&
+        data.requiredAmount is number && data.requiredAmount >= 0 &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.productId is string && data.productId.size() <= 128 &&
+        data.timestamp == request.time &&
+        (!('paidAmount' in data) || (data.paidAmount is number && data.paidAmount >= 0)) &&
+        (!('couponUsed' in data) || (data.couponUsed is string && data.couponUsed.size() <= 50));
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && 
+        isValidUser(incoming()) && incoming().uid == userId &&
+        incoming().role == 'user';
+        
+      allow update: if (isAdmin() && isValidUserUpdate(incoming()) && incoming().uid == userId) ||
+                       (isOwner(userId) && isValidUserUpdate(incoming()) && incoming().uid == userId && incoming().role == existing().role);
+    }
+
+    match /users/{userId}/downloads/{downloadId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow list: if (isOwner(userId) || isAdmin()) && resource.data.obtainedAt > null;
+      allow create: if isOwner(userId) && isValidId(downloadId) &&
+        isValidDownload(incoming()) && 
+        exists(/databases/$(database)/documents/products/$(incoming().productId));
+      allow update, delete: if false; 
+    }
+    
+    match /products/{productId} {
+      allow read, list: if isSignedIn() || true; 
+      allow create: if isAdmin() && isValidId(productId) && isValidProduct(incoming()) && incoming().createdBy == request.auth.uid;
+      allow update: if isAdmin() && isValidId(productId) && isValidProductUpdate(incoming());
+      allow delete: if isAdmin() && isValidId(productId);
+    }
+
+    match /coupons/{couponCode} {
+      allow read, list: if isSignedIn(); // Users can check if coupon exists and is active, Admin can list them.
+      allow create: if isAdmin() && isValidId(couponCode) && isValidCoupon(incoming()) && incoming().createdBy == request.auth.uid;
+      allow update: if isAdmin() && isValidId(couponCode) && isValidCouponUpdate(incoming());
+      allow delete: if isAdmin() && isValidId(couponCode);
+    }
+
+    match /purchases/{purchaseId} {
+      // Allows user to read and create. Unauthenticated updates ONLY for status and paidAmount (for GAS Webhook script bypasses).
+      allow read: if isOwner(resource.data.userId);
+      allow create: if isSignedIn() && isValidId(purchaseId) && isValidPurchase(incoming()) && incoming().userId == request.auth.uid && incoming().status == 'pending';
+      allow update: if (request.auth == null || true) && // Allows unauthenticated updates 
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paidAmount']) &&
+                       (incoming().status == 'approved' || incoming().status == 'amount_mismatch');
+      allow delete: if false;
+    }
+  }
+}

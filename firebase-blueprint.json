@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "number" },
+        "wishlist": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Digital product available in the store",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "downloadUrl": { "type": "string" },
+        "price": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "description", "category", "imageUrl", "downloadUrl", "price", "createdAt", "createdBy"]
+    },
+    "Download": {
+      "title": "Download",
+      "description": "Record of a user obtaining a product",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "obtainedAt": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "couponUsed": { "type": "string" }
+      },
+      "required": ["productId", "obtainedAt", "amountPaid"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Discount coupon code",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "discountPercent": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["code", "discountPercent", "isActive", "createdAt", "createdBy"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles and RBAC roles"
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Catalog of digital products"
+    },
+    "/users/{userId}/downloads/{downloadId}": {
+      "schema": { "$ref": "#/entities/Download" },
+      "description": "User's owned digital products"
+    },
+    "/coupons/{couponCode}": {
+      "schema": { "$ref": "#/entities/Coupon" },
+      "description": "Available discount coupons"
+    }
+  }
+}
